@@ -8,24 +8,48 @@ document.getElementsByTagName("body")[0].innerHTML += c;
 var canvas = document.getElementById("lightticker");
 var context = canvas.getContext("2d");
 
+var screen = null;
+var getMapData = new XMLHttpRequest();
+getMapData.onreadystatechange = function () {
+    if (this.readyState == 4 && this.status == 200) {
+        screen = this;
+    }
+};
+getMapData.open("GET", "/src/map.json", true);
+getMapData.send();
+
 
 function getRandomColor() {
     var letters = '0123456789ABCDEF';
     var color = '#';
-    for (var i = 0; i < 6; i++ ) {
+    for (var i = 0; i < 6; i++) {
         color += letters[Math.floor(Math.random() * 16)];
     }
     return color;
 }
 
+function componentToHex(c) {
+    var hex = c.toString(16);
+    return hex.length == 1 ? "0" + hex : hex;
+}
+
+function rgbToHex(r, g, b) {
+    return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
+}
+
+function i2xy(index, mapWidth) {
+    var x = index % mapWidth;
+    var y = Math.floor(index / mapWidth);
+    return [x, y];
+}
+
 function draw() {
 
     context.beginPath();
-    for (var y = 0; y < 32; y++) {
-        for (var x = 0; x < 32; x++) {
-            context.fillStyle = getRandomColor();
-            context.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-        }
+    for (var i = 0; i < screen.length; i++) {
+        var xy = i2xy(i, canvas.width / TILE_SIZE);
+        context.fillStyle = rgbToHex(screen[i][0], screen[i][1], screen[i][2]);
+        context.fillRect(xy[0] * TILE_SIZE, xy[1] * TILE_SIZE, TILE_SIZE, TILE_SIZE);
     }
     context.stroke();
     context.closePath();
@@ -33,6 +57,7 @@ function draw() {
 
 var timer = 0;
 var maxTimer = 50;
+
 function animate() {
     timer++;
     if (timer == maxTimer) {
@@ -48,5 +73,10 @@ function animate() {
 }
 
 
-
-animate();
+var checkData = setInterval(function () {
+    if (screen != null) {
+        clearInterval(checkData);
+        screen = JSON.parse(screen.responseText);
+        animate();
+    }
+}, 12);
